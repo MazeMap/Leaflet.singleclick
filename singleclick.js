@@ -1,29 +1,36 @@
-
-
 L.Evented.addInitHook( function () {
-	this.on('click', this._scheduleSingleClick, this);
-	this.on('dblclick', this._cancelSingleClick, this);
+    this._timerId = null;
+    this.on( 'click', this._scheduleSingleClick, this );
+    this.on( 'dblclick', this._cancelSingleClick, this );
 
-	this._singleClickTimeout = null;
 });
 
 L.Evented.include({
 
-	_scheduleSingleClick: function(ev) {
-		this._cancelSingleClick();
-		this._singleClickTimeout = window.setTimeout(
-			L.bind(this._fireSingleClick, this, ev),
-			this.options.singleClickTimeout || 500);
+	_cancelSingleClick : function(){
+		//This timeout is key to workaround an issue where double-click events are fired in this order on touch browsers: ['click', 'dblclick', 'click'] instead of ['click', 'click', 'dblclick']
+		setTimeout( this._clearTimeout.bind(this), 0 );
 	},
 
-	_cancelSingleClick: function() {
-		window.clearTimeout(this._singleClickTimeout);
-	},
+    _scheduleSingleClick: function(e) {
+        this._clearTimeout();
 
-	_fireSingleClick: function(ev) {
-		if (!ev.originalEvent._stopped) {
-			this.fire('singleclick', L.Util.extend(ev, {type: 'singleclick'}));
-		}
-	}
+        this._timerId = setTimeout( this._fireSingleClick.bind(this, e), (this.options.singleClickTimeout || 500) );
+    },
+
+    _fireSingleClick: function(e){
+        if ( !e.originalEvent._stopped ) {
+            this.fire( 'singleclick', L.Util.extend( e, { type : 'singleclick' } ) );
+        }
+    },
+
+    _clearTimeout: function(){
+        if (this._timerId != null)
+        {
+            clearTimeout( this._timerId );
+            this._timerId = null;
+        }
+    }
+
 })
 
